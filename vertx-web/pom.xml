@@ -5,5 +5,5 @@
     <artifactId>vertx</artifactId>
     <version>0.0.1-SNAPSHOT</version>
   </parent>
-  <artifactId>web</artifactId>
+  <artifactId>vertx-web</artifactId>
 </project>

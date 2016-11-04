@@ -9,6 +9,9 @@
 		<module>web</module>
 		<module>api</module>
 		<module>service</module>
+		<module>vertx-web</module>
+		<module>vertx-api</module>
+		<module>vertx-service</module>
 	</modules>
 
 	<build>
