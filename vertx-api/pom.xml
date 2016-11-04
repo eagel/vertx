@@ -6,4 +6,10 @@
     <version>0.0.1-SNAPSHOT</version>
   </parent>
   <artifactId>vertx-api</artifactId>
+  <dependencies>
+  	<dependency>
+  		<groupId>io.vertx</groupId>
+  		<artifactId>vertx-core</artifactId>
+  	</dependency>
+  </dependencies>
 </project>

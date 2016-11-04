@@ -10,7 +10,30 @@
   	<dependency>
   		<groupId>eagel</groupId>
   		<artifactId>vertx-api</artifactId>
-  		<version>0.0.1-SNAPSHOT</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>io.vertx</groupId>
+  		<artifactId>vertx-core</artifactId>
+  	</dependency>
+  	<dependency>
+  		<groupId>io.vertx</groupId>
+  		<artifactId>vertx-mysql-postgresql-client</artifactId>
+  	</dependency>
+  	<dependency>
+  		<groupId>io.vertx</groupId>
+  		<artifactId>vertx-service-discovery</artifactId>
+  	</dependency>
+  	<dependency>
+  		<groupId>io.vertx</groupId>
+  		<artifactId>vertx-web</artifactId>
+  	</dependency>
+  	<dependency>
+  		<groupId>io.vertx</groupId>
+  		<artifactId>vertx-hazelcast</artifactId>
+  	</dependency>
+  	<dependency>
+  		<groupId>io.vertx</groupId>
+  		<artifactId>vertx-unit</artifactId>
   	</dependency>
   </dependencies>
 </project>
