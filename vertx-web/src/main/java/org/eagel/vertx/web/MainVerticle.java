@@ -1,5 +1,6 @@
 package org.eagel.vertx.web;
 
+import io.vertx.circuitbreaker.CircuitBreaker;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpClient;
@@ -15,6 +16,7 @@ public class MainVerticle extends AbstractVerticle {
 	private HttpServer httpServer;
 	private Router router;
 	private ServiceDiscovery serviceDiscovery;
+	private CircuitBreaker circuitBreaker;
 
 	@Override
 	public void start(Future<Void> startFuture) throws Exception {
@@ -28,6 +30,7 @@ public class MainVerticle extends AbstractVerticle {
 				startFuture.fail(listen.cause());
 			} else {
 				serviceDiscovery = ServiceDiscovery.create(vertx);
+				circuitBreaker = CircuitBreaker.create("service", vertx);
 				startFuture.complete();
 			}
 			;
@@ -35,28 +38,35 @@ public class MainVerticle extends AbstractVerticle {
 	}
 
 	public void hello(RoutingContext context) {
-		HttpEndpoint.getClient(serviceDiscovery, new JsonObject().put("name", "service"), (getClient) -> {
-			if (getClient.failed()) {
-				context.response().setStatusCode(500);
-				context.response().setStatusMessage("Error");
-				context.response().end("Error Happend");
-			} else {
-				HttpClient httpClient = getClient.result();
+		long begin = System.nanoTime();
 
-				JsonObject request = new JsonObject();
-				request.put("message", "hello");
+		circuitBreaker.executeWithFallback((f) -> {
+			HttpEndpoint.getClient(serviceDiscovery, new JsonObject().put("name", "service"), (getClient) -> {
+				if (getClient.failed()) {
+					f.fail("NO SERVICE");
+				} else {
+					HttpClient httpClient = getClient.result();
 
-				httpClient.post("", (response) -> {
-					response.handler((handler) -> {
-						System.out.println(handler.toString("UTF-8"));
+					JsonObject request = new JsonObject();
+					request.put("message", "hello");
+					httpClient.post("/hello", (response) -> {
+						response.handler((handler) -> {
+							System.out.println(handler.toString("UTF-8"));
 
-						context.response().end("success");
+							ServiceDiscovery.releaseServiceObject(serviceDiscovery, httpClient);
 
-						ServiceDiscovery.releaseServiceObject(serviceDiscovery, httpClient);
-					});
+							f.complete("SUCCESS");
+						});
 
-				}).end(Json.encodePrettily(request));
-			}
+					}).end(Json.encodePrettily(request));
+				}
+			});
+		}, (v) -> {
+			return "TRY LATER";
+		}).setHandler((v) -> {
+			context.response().end(v.succeeded() + ": " + (v.succeeded() ? v.result() : v.cause().getMessage()));
+			System.out.println("spend: " + (System.nanoTime() - begin));
 		});
+
 	}
 }
