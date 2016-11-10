@@ -1,16 +1,20 @@
 package org.eagel.vertx.web;
 
+import org.eagel.vertx.api.GrpcClient;
+import org.eagel.vertx.api.GrpcServiceType;
+import org.eagel.vertx.api.proto.HelloGrpc;
+import org.eagel.vertx.api.proto.HelloGrpc.HelloStub;
+import org.eagel.vertx.api.proto.HelloOuterClass.Message;
+
+import io.grpc.stub.StreamObserver;
 import io.vertx.circuitbreaker.CircuitBreaker;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
-import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpServer;
-import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.servicediscovery.ServiceDiscovery;
-import io.vertx.servicediscovery.types.HttpEndpoint;
 
 public class MainVerticle extends AbstractVerticle {
 	private HttpServer httpServer;
@@ -41,26 +45,35 @@ public class MainVerticle extends AbstractVerticle {
 		long begin = System.nanoTime();
 
 		circuitBreaker.executeWithFallback((f) -> {
-			HttpEndpoint.getClient(serviceDiscovery, new JsonObject().put("name", "service"), (getClient) -> {
+			GrpcServiceType.getClient(serviceDiscovery, new JsonObject().put("name", "service"), (getClient) -> {
 				if (getClient.failed()) {
 					f.fail("NO SERVICE");
 				} else {
-					HttpClient httpClient = getClient.result();
+					GrpcClient grpcClient = getClient.result();
+					HelloStub stub = HelloGrpc.newStub(grpcClient.getChannel());
 
-					JsonObject request = new JsonObject();
-					request.put("message", "hello");
-					httpClient.post("/hello", (response) -> {
-						response.handler((handler) -> {
-							System.out.println(handler.toString("UTF-8"));
+					stub.hello(Message.newBuilder().setMessage("wo").build(), new StreamObserver<Message>() {
 
-							ServiceDiscovery.releaseServiceObject(serviceDiscovery, httpClient);
+						@Override
+						public void onNext(Message value) {
+							System.out.println(value.getMessage());
 
 							f.complete("SUCCESS");
-						});
+						}
 
-					}).end(Json.encodePrettily(request));
+						@Override
+						public void onError(Throwable t) {
+							f.fail(t);
+						}
+
+						@Override
+						public void onCompleted() {
+							ServiceDiscovery.releaseServiceObject(serviceDiscovery, grpcClient);
+						}
+					});
 				}
 			});
+
 		}, (v) -> {
 			return "TRY LATER";
 		}).setHandler((v) -> {
