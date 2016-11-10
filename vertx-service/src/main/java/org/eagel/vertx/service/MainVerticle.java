@@ -22,6 +22,7 @@ public class MainVerticle extends AbstractVerticle {
 		vertx.executeBlocking((future) -> {
 			try {
 				server.start();
+				future.complete();
 			} catch (IOException e) {
 				future.fail(e);
 			}
