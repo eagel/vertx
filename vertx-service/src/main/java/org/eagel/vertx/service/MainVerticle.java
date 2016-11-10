@@ -30,7 +30,7 @@ public class MainVerticle extends AbstractVerticle {
 			if (rst.failed()) {
 				startFuture.fail(rst.cause());
 			} else {
-				Record record = GrpcServiceType.createRecord("service", "locahost", server.getPort());
+				Record record = GrpcServiceType.createRecord("service", "localhost", server.getPort());
 				serviceDiscovery = ServiceDiscovery.create(vertx);
 				serviceDiscovery.publish(record, (publish) -> {
 					if (publish.failed()) {
