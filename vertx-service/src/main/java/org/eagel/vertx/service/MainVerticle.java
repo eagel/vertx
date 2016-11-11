@@ -15,6 +15,7 @@ import io.vertx.servicediscovery.ServiceDiscovery;
 public class MainVerticle extends AbstractVerticle {
 	private ServiceDiscovery serviceDiscovery;
 	private Server server;
+	private Record record;
 
 	@Override
 	public void start(Future<Void> startFuture) throws Exception {
@@ -30,7 +31,7 @@ public class MainVerticle extends AbstractVerticle {
 			if (rst.failed()) {
 				startFuture.fail(rst.cause());
 			} else {
-				Record record = GrpcServiceType.createRecord("service", "localhost", server.getPort());
+				record = GrpcServiceType.createRecord("service", "localhost", server.getPort());
 				serviceDiscovery = ServiceDiscovery.create(vertx);
 				serviceDiscovery.publish(record, (publish) -> {
 					if (publish.failed()) {
@@ -45,44 +46,46 @@ public class MainVerticle extends AbstractVerticle {
 
 	@Override
 	public void stop(Future<Void> stopFuture) throws Exception {
-		server.shutdown();
-		vertx.executeBlocking((futrue) -> {
-			try {
-				if (server.awaitTermination(10, TimeUnit.SECONDS)) {
-					futrue.complete();
-				} else {
-					futrue.fail("");
+		serviceDiscovery.unpublish(record.getRegistration(), (unpublish) -> {
+			server.shutdown();
+			vertx.executeBlocking((futrue) -> {
+				try {
+					if (server.awaitTermination(10, TimeUnit.SECONDS)) {
+						futrue.complete();
+					} else {
+						futrue.fail("");
+					}
+				} catch (InterruptedException e) {
+					futrue.fail(e);
 				}
-			} catch (InterruptedException e) {
-				futrue.fail(e);
-			}
-		}, (rst) -> {
-			if (rst.failed()) {
-				if (rst.cause() instanceof InterruptedException) {
-					stopFuture.fail(rst.cause());
-				} else {
-					server.shutdownNow();
-					vertx.executeBlocking((futrue) -> {
-						try {
-							if (server.awaitTermination(10, TimeUnit.SECONDS)) {
-								futrue.complete();
-							} else {
-								futrue.fail("");
+			}, (rst) -> {
+				if (rst.failed()) {
+					if (rst.cause() instanceof InterruptedException) {
+						stopFuture.fail(rst.cause());
+					} else {
+						server.shutdownNow();
+						vertx.executeBlocking((futrue) -> {
+							try {
+								if (server.awaitTermination(10, TimeUnit.SECONDS)) {
+									futrue.complete();
+								} else {
+									futrue.fail("");
+								}
+							} catch (InterruptedException e) {
+								futrue.fail(e);
 							}
-						} catch (InterruptedException e) {
-							futrue.fail(e);
-						}
-					}, (rsts) -> {
-						if (rst.failed()) {
-							stopFuture.fail(rst.cause());
-						} else {
-							stopFuture.complete();
-						}
-					});
+						}, (rsts) -> {
+							if (rst.failed()) {
+								stopFuture.fail(rst.cause());
+							} else {
+								stopFuture.complete();
+							}
+						});
+					}
+				} else {
+					stopFuture.complete();
 				}
-			} else {
-				stopFuture.complete();
-			}
+			});
 		});
 	}
 }
